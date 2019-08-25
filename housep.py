@@ -83,17 +83,37 @@ print("RMSE(log) Kaggle measurement: %.5f"% root_mean_squared_log_error(y_test, 
 print('Training score: {}'.format(reg.score(x_train, y_train)))
 print('Test score: {}'.format(reg.score(x_test, y_test)))
 
+########## L2 Regularization or Ridge Regression #########
+
 steps = [
     ('scalar', StandardScaler()),
     ('poly', PolynomialFeatures(degree=2)),
-    ('model', LinearRegression())
+    ('model', Ridge(alpha=3, fit_intercept=True)) ## alpha {0.1 to infinity}
 ]
 
-pipeline = Pipeline(steps)
+ridge_pipe = Pipeline(steps)
 
-pipeline.fit(x_train, y_train)
+ridge_pipe.fit(x_train, y_train)
 
-'Modelo con pipeline'
+'Modelo con pipeline y Ridge'
 
-print('Training score: {}'.format(pipeline.score(x_train, y_train)))
-print('Test score: {}'.format(pipeline.score(x_test, y_test)))
+print('Training score: {}'.format(ridge_pipe.score(x_train, y_train)))
+print('Test score: {}'.format(ridge_pipe.score(x_test, y_test)))
+
+########## L1 Regularization or Lasso Regression #########
+########## Selecciona ciertas variables más relevantes####
+
+steps = [
+    ('scalar', StandardScaler()),
+    ('poly', PolynomialFeatures(degree=2)),
+    ('model', Lasso(alpha=0.5, fit_intercept=True)) ## alpha {0.1 to 1}
+]
+
+lasso_pipe = Pipeline(steps)
+
+lasso_pipe.fit(x_train, y_train)
+
+'Modelo con pipeline y Lasso'
+
+print('Training score: {}'.format(lasso_pipe.score(x_train, y_train)))
+print('Test score: {}'.format(lasso_pipe.score(x_test, y_test)))
