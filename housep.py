@@ -7,7 +7,8 @@ Created on Wed Aug 21 18:03:39 2019
 
 import pandas as pd
 import numpy as np
-
+import warnings
+warnings.filterwarnings('ignore') #Elimina advertencias sobre traspaso de int64 a float64 por normalizacion
 
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -23,37 +24,25 @@ from sklearn.preprocessing import StandardScaler
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_log_error
 
 
 df_train = pd.read_csv("train.csv", encoding ="latin-1", sep=",", header=0)
 
-
-############ **fUNCIONES**############
-def find_missing_values(df, columns):
-    missing_vals ={}
-    print('Número de missing values para cada columna')
-    df_lenght=len(df)
-    for column in columns:
-        total_column_values=df[column].value_counts().sum()
-        missing_vals[column]= df_lenght-total_column_values
-    return missing_vals    
-
-def mean_absolute_percentage_error(y_true, y_pred): 
-    y_true, y_pred = np.array(y_true), np.array(y_pred)
-    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-
-def root_mean_squared_log_error(y_true,y_pred):
-    y_true, y_pred = np.array(np.log(y_true)), np.array(np.log(y_pred))
-    return np.sqrt(np.mean(np.power((y_true - y_pred),2)))
-
-############ **fUNCIONES**##############
  
 ############## **EDA** #################
 
-#print(df_train.columns)
-#  df_train.info() ; df_train.head()
-#usar diccionario de missing values por columna    
+
+#print(df_train.columns); Entrega todos los nombres de las variables
+    
+#df_train.info() ; Muestra el tipo (int64, object,etc) nombre columna, non null data
+    
+#df_train.head() ; En este caso con muchas columnas no es muy útil (muestra las 10 primeras filas)
+    
+#Diccionario de missing values por columna    
 #missing_values= find_missing_values(df_train, columns=df_train.columns)
+    
+    
 
 ############## **EDA** #################
 
@@ -95,7 +84,7 @@ ridge_pipe = Pipeline(steps)
 
 ridge_pipe.fit(x_train, y_train)
 
-'Modelo con pipeline y Ridge'
+print('Modelo con pipeline y Ridge')
 
 print('Training score: {}'.format(ridge_pipe.score(x_train, y_train)))
 print('Test score: {}'.format(ridge_pipe.score(x_test, y_test)))
@@ -113,7 +102,7 @@ lasso_pipe = Pipeline(steps)
 
 lasso_pipe.fit(x_train, y_train)
 
-'Modelo con pipeline y Lasso'
+print('Modelo con pipeline y Lasso')
 
 print('Training score: {}'.format(lasso_pipe.score(x_train, y_train)))
 print('Test score: {}'.format(lasso_pipe.score(x_test, y_test)))
