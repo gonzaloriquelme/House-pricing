@@ -6,9 +6,12 @@ Created on Tue Aug 27 22:56:34 2019
 """
 import numpy as np
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 from funciones_ayuda import find_missing_values
+from sklearn.preprocessing import StandardScaler
+from scipy.stats import norm
+from scipy import stats
 
 
 
@@ -77,3 +80,66 @@ missing_data.head(20)
 df_train = df_train.drop((missing_data[missing_data['Total'] > 1]).index,1)
 df_train = df_train.drop(df_train.loc[df_train['Electrical'].isnull()].index)
 df_train.isnull().sum().max() #just checking that there's no missing data missing...
+
+#Univariate analysis
+#standardizing data
+saleprice_scaled = StandardScaler().fit_transform(df_train['SalePrice'][:,np.newaxis]);
+low_range = saleprice_scaled[saleprice_scaled[:,0].argsort()][:10]
+high_range= saleprice_scaled[saleprice_scaled[:,0].argsort()][-10:]
+print('outer range (low) of the distribution:')
+print(low_range)
+print('\nouter range (high) of the distribution:')
+print(high_range)
+#Bivariate analysis
+#bivariate analysis saleprice/grlivarea
+var = 'GrLivArea'
+data = pd.concat([df_train['SalePrice'], df_train[var]], axis=1)
+data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000));
+#deleting points
+#En scatterplot se enceuntran dos outliers con valores altos de GrLivArea
+df_train.sort_values(by = 'GrLivArea', ascending = False)[:2]
+df_train = df_train.drop(df_train[df_train['Id'] == 1299].index)
+df_train = df_train.drop(df_train[df_train['Id'] == 524].index)
+#bivariate analysis saleprice/grlivarea
+var = 'TotalBsmtSF'
+data = pd.concat([df_train['SalePrice'], df_train[var]], axis=1)
+data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000));
+#histogram and normal probability plot
+sns.distplot(df_train['SalePrice'], fit=norm);
+fig = plt.figure()
+res = stats.probplot(df_train['SalePrice'], plot=plt)
+#applying log transformation
+df_train['SalePrice'] = np.log(df_train['SalePrice'])
+#transformed histogram and normal probability plot
+sns.distplot(df_train['SalePrice'], fit=norm);
+fig = plt.figure()
+res = stats.probplot(df_train['SalePrice'], plot=plt)
+#histogram and normal probability plot
+sns.distplot(df_train['GrLivArea'], fit=norm);
+fig = plt.figure()
+res = stats.probplot(df_train['GrLivArea'], plot=plt)
+df_train['GrLivArea'] = np.log(df_train['GrLivArea'])
+#histogram and normal probability plot
+sns.distplot(df_train['TotalBsmtSF'], fit=norm);
+fig = plt.figure()
+res = stats.probplot(df_train['TotalBsmtSF'], plot=plt)
+
+#create column for new variable (one is enough because it's a binary categorical feature)
+#if area>0 it gets 1, for area==0 it gets 0
+df_train['HasBsmt'] = pd.Series(len(df_train['TotalBsmtSF']), index=df_train.index)
+df_train['HasBsmt'] = 0 
+df_train.loc[df_train['TotalBsmtSF']>0,'HasBsmt'] = 1
+#transform data
+df_train.loc[df_train['HasBsmt']==1,'TotalBsmtSF'] = np.log(df_train['TotalBsmtSF'])
+#histogram and normal probability plot
+sns.distplot(df_train[df_train['TotalBsmtSF']>0]['TotalBsmtSF'], fit=norm);
+fig = plt.figure()
+res = stats.probplot(df_train[df_train['TotalBsmtSF']>0]['TotalBsmtSF'], plot=plt)
+
+
+#Checking for homoscedasticity
+#scatter plot
+plt.scatter(df_train['GrLivArea'], df_train['SalePrice']);
+plt.scatter(df_train[df_train['TotalBsmtSF']>0]['TotalBsmtSF'], df_train[df_train['TotalBsmtSF']>0]['SalePrice']);
+#convert categorical variable into dummy
+df_train = pd.get_dummies(df_train)

@@ -6,7 +6,6 @@ Created on Wed Aug 21 18:03:39 2019
 """
 
 import pandas as pd
-import numpy as np
 import warnings
 warnings.filterwarnings('ignore') #Elimina advertencias sobre traspaso de int64 a float64 por normalizacion
 
@@ -23,8 +22,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_log_error
 
 
@@ -69,25 +66,24 @@ ridge_pipe = Pipeline(steps)
 
 ridge_pipe.fit(x_train, y_train)
 
-print('Modelo con pipeline y Ridge')
+print('Modelo Ridge')
 
 print('Training score: {}'.format(ridge_pipe.score(x_train, y_train)))
 print('Test score: {}'.format(ridge_pipe.score(x_test, y_test)))
 
 ########## L1 Regularization or Lasso Regression #########
-########## Selecciona ciertas variables más relevantes####
 
 steps = [
     ('scalar', StandardScaler()),
     ('poly', PolynomialFeatures(degree=2)),
-    ('model', Lasso(alpha=0.5, fit_intercept=True)) ## alpha {0.1 to 1}
+    ('model', Lasso(alpha=0.2, fit_intercept=True)) ## alpha {0.1 to 1}
 ]
 
 lasso_pipe = Pipeline(steps)
 
 lasso_pipe.fit(x_train, y_train)
 
-print('Modelo con pipeline y Lasso')
+print('Modelo Lasso')
 
 print('Training score: {}'.format(lasso_pipe.score(x_train, y_train)))
 print('Test score: {}'.format(lasso_pipe.score(x_test, y_test)))
