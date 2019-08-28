@@ -10,6 +10,7 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore') #Elimina advertencias sobre traspaso de int64 a float64 por normalizacion
 
+
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import Ridge
@@ -29,22 +30,6 @@ from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_lo
 
 df_train = pd.read_csv("train.csv", encoding ="latin-1", sep=",", header=0)
 
- 
-############## **EDA** #################
-
-
-#print(df_train.columns); Entrega todos los nombres de las variables
-    
-#df_train.info() ; Muestra el tipo (int64, object,etc) nombre columna, non null data
-    
-#df_train.head() ; En este caso con muchas columnas no es muy útil (muestra las 10 primeras filas)
-    
-#Diccionario de missing values por columna    
-#missing_values= find_missing_values(df_train, columns=df_train.columns)
-    
-    
-
-############## **EDA** #################
 
 ############# **MODELO**################
 
