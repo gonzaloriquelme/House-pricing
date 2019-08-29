@@ -11,35 +11,27 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from funciones_ayuda import find_missing_values
-from scipy.stats import norm
-from scipy import stats
 import warnings
 warnings.filterwarnings('ignore') #Elimina advertencias sobre traspaso de int64 a float64 por normalizacion
+import xlsxwriter
+from scipy.stats import norm
+from scipy import stats
+from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_log_error
 
 
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import Ridge
-from sklearn.linear_model import Lasso
-from sklearn.linear_model import ElasticNet
+from sklearn.model_selection import cross_val_score,train_test_split,Kfold
+from sklearn.linear_model import Ridge,Lasso,ElasticNet
 from sklearn.metrics import mean_squared_error, r2_score
-
+from sklearn.metrics import make_scorer
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
-from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_log_error
-
-
-import xlsxwriter
+#####Cargar base de datos########
 
 df_train = pd.read_csv("train.csv", encoding ="latin-1", sep=",", header=0)
-
-
-
-############# **MODELO**################
 
 y = df_train.SalePrice
 y=np.log(y)
@@ -100,6 +92,16 @@ print('Modelo Lasso')
 
 print('Training score: {}'.format(lasso_pipe.score(x_train, y_train)))
 print('Test score: {}'.format(lasso_pipe.score(x_test, y_test)))
+
+n_folds=5
+def rmse_CV_train(model):
+    kf = Kfold(n_folds,shuffle=True,random_state=42).get_n_splits(df_train.values)
+    rmse = np.sqrt(-cross_val_score(model,x_train,y_train,scoring ="neg_mean_squared_error",cv=kf))
+    return (rmse)
+def rmse_CV_test(model):
+    kf = Kfold(n_folds,shuffle=True,random_state=42).get_n_splits(df_train.values)
+    rmse = np.sqrt(-cross_val_score(model,x_test,y_test,scoring ="neg_mean_squared_error",cv=kf))
+    return (rmse)
 
 
 ########Predicciones finales##########
