@@ -20,12 +20,10 @@ from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_lo
 
 
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score,train_test_split,Kfold
-from sklearn.linear_model import Ridge,Lasso,ElasticNet
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import RidgeCV
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.metrics import make_scorer
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
@@ -59,50 +57,40 @@ print("RMSE(log) Kaggle measurement: %.5f" % root_mean_squared_log_error(y_test,
 print('Training score: {}'.format(reg.score(x_train, y_train)))
 print('Test score: {}'.format(reg.score(x_test, y_test)))
 
-########## L2 Regularization or Ridge Regression #########
+##### Feature Scaler 
+sc=StandardScaler()
+x_train=sc.fit_transform(x_train)
+x_test=sc.transform(x_test)#se requiere incluir fit solamente la primera vez que se utiliza
 
-steps = [
-    ('scalar', StandardScaler()),
-    ('poly', PolynomialFeatures(degree=2)),
-    ('model', Ridge(alpha=3, fit_intercept=True)) ## alpha {0.1 to infinity}
-]
+##### Polynomial features
+pf=PolynomialFeatures(degree=2)
+x_train=pf.fit_transform(x_train)
+x_test=pf.transform(x_test)#misma idea
 
-ridge_pipe = Pipeline(steps)
 
-ridge_pipe.fit(x_train, y_train)
+########## L2 Regularization or Ridge Regression 
+########## Alpha {0.1 to infinity} 
+
+ridge=RidgeCV(alphas = [0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1, 3, 6, 10, 30, 60], fit_intercept=True) 
+
+ridge.fit(x_train, y_train)
+
+alpha=ridge.alpha_
+print('Best alpha', alpha)
+
+print("Try again for more precision with alphas centered around " + str(alpha))
+ridge = RidgeCV(alphas = [alpha * .6, alpha * .65, alpha * .7, alpha * .75, alpha * .8, alpha * .85, 
+                          alpha * .9, alpha * .95, alpha, alpha * 1.05, alpha * 1.1, alpha * 1.15,
+                          alpha * 1.25, alpha * 1.3, alpha * 1.35, alpha * 1.4],cv = 5, fit_intercept=True) 
+
+ridge.fit(x_train, y_train)
+alpha = ridge.alpha_
+print("Best alpha :", alpha)
 
 print('Modelo Ridge')
 
-print('Training score: {}'.format(ridge_pipe.score(x_train, y_train)))
-print('Test score: {}'.format(ridge_pipe.score(x_test, y_test)))
-
-########## L1 Regularization or Lasso Regression #########
-
-steps = [
-    ('scalar', StandardScaler()),
-    ('poly', PolynomialFeatures(degree=2)),
-    ('model', Lasso(alpha=0.2, fit_intercept=True)) ## alpha {0.1 to 1}
-]
-
-lasso_pipe = Pipeline(steps)
-
-lasso_pipe.fit(x_train, y_train)
-
-print('Modelo Lasso')
-
-print('Training score: {}'.format(lasso_pipe.score(x_train, y_train)))
-print('Test score: {}'.format(lasso_pipe.score(x_test, y_test)))
-
-n_folds=5
-def rmse_CV_train(model):
-    kf = Kfold(n_folds,shuffle=True,random_state=42).get_n_splits(df_train.values)
-    rmse = np.sqrt(-cross_val_score(model,x_train,y_train,scoring ="neg_mean_squared_error",cv=kf))
-    return (rmse)
-def rmse_CV_test(model):
-    kf = Kfold(n_folds,shuffle=True,random_state=42).get_n_splits(df_train.values)
-    rmse = np.sqrt(-cross_val_score(model,x_test,y_test,scoring ="neg_mean_squared_error",cv=kf))
-    return (rmse)
-
+print('Training score: {}'.format(ridge.score(x_train, y_train)))
+print('Test score: {}'.format(ridge.score(x_test, y_test)))
 
 ########Predicciones finales##########
 
@@ -112,10 +100,12 @@ cols=['OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'Year
 x=df_test[cols]
  
 x=x.fillna(x.median()) #se rellena con mediana (necesario para kaggle)
+x=sc.transform(x)
+x=pf.transform(x)
 
 #x=x.dropna()#si al menos 1 columna tiene NaN se elimina la fila
 ides=df_train.Id
-predicciones=np.exp(ridge_pipe.predict(x))
+predicciones=np.exp(ridge.predict(x))
 
 #### Crear archivo para Kaggle####
 workbook = xlsxwriter.Workbook('submit.xlsx')
