@@ -122,8 +122,10 @@ worksheet.write(0,0,'Id')
 worksheet.write(0,1,'SalePrice')
 row=1
 col=0
-for i in range(1,len(predicciones)):
-    worksheet.write(row,col,i)
+for item in ides:
+    if item==1460:
+        break
+    worksheet.write(row,col,item+1460)
     row=row+1
 row=1
 col=1    
@@ -131,6 +133,12 @@ for item in predicciones:
     worksheet.write(row,col,item)
     row=row+1
 workbook.close()
+
+
+df=pd.read_excel('submit.xlsx')
+df.to_csv('submit.csv', encoding='utf-8', index=False)
+#submission=pd.read_csv('submit.csv')
+#output=df({'Id':submission.Id,'SalePrice':submission.SalePrice  })
 
    
     
