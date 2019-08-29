@@ -25,6 +25,6 @@ def mean_absolute_percentage_error(y_true, y_pred):
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 def root_mean_squared_log_error(y_true,y_pred):
-    y_true, y_pred = np.array(np.log(y_true)), np.array(np.log(y_pred))
+    y_true, y_pred = np.array(np.log(y_true+1)), np.array(np.log(y_pred+1))
     return np.sqrt(np.mean(np.power((y_true - y_pred),2)))
 

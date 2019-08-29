@@ -22,7 +22,7 @@ from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_lo
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import RidgeCV
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import StandardScaler
 
@@ -49,7 +49,7 @@ print('Coefficients: \n', reg.coef_)
 print('Variance score(R^2): %.2f' % r2_score(y_test, predictions))
 print("Mean squared error: %.2f"% mean_squared_error(y_test, predictions))
 print("MAPE: %.2f"% mean_absolute_percentage_error(y_test, predictions))
-print("RMSE(log) Kaggle measurement: %.5f" % root_mean_squared_log_error(y_test, predictions))
+print("RMSLE: %.5f"% np.sqrt(mean_squared_log_error(y_test,predictions)))
 
 
 ###### BIAS/VARIANCE THEORY ******ACCURACY****** ########
@@ -87,6 +87,21 @@ ridge.fit(x_train, y_train)
 alpha = ridge.alpha_
 print("Best alpha :", alpha)
 
+print("Try again for more precision with alphas centered around " + str(alpha))
+ridge = RidgeCV(alphas = [alpha * .6, alpha * .65, alpha * .7, alpha * .75, alpha * .8, alpha * .85, 
+                          alpha * .9, alpha * .95, alpha, alpha * 1.05, alpha * 1.1, alpha * 1.15,
+                          alpha * 1.25, alpha * 1.3, alpha * 1.35, alpha * 1.4],cv = 5, fit_intercept=True) 
+
+ridge.fit(x_train, y_train)
+alpha = ridge.alpha_
+print("Best alpha :", alpha)
+
+predictions = ridge.predict(x_test)
+
+print('Variance score(R^2): %.2f' % r2_score(y_test, predictions))
+print("Mean squared error: %.2f"% mean_squared_error(y_test, predictions))
+print("MAPE: %.2f"% mean_absolute_percentage_error(y_test, predictions))
+print("RMSLE: %.5f"% np.sqrt(mean_squared_log_error(y_test,predictions)))
 print('Modelo Ridge')
 
 print('Training score: {}'.format(ridge.score(x_train, y_train)))
@@ -105,7 +120,7 @@ x=pf.transform(x)
 
 #x=x.dropna()#si al menos 1 columna tiene NaN se elimina la fila
 ides=df_train.Id
-predicciones=np.exp(ridge.predict(x))
+predictions=np.exp(ridge.predict(x))
 
 #### Crear archivo para Kaggle####
 workbook = xlsxwriter.Workbook('submit.xlsx')
@@ -121,7 +136,7 @@ for item in ides:
     row=row+1
 row=1
 col=1    
-for item in predicciones:
+for item in predictions:
     worksheet.write(row,col,item)
     row=row+1
 workbook.close()
