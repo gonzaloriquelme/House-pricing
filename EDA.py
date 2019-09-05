@@ -10,34 +10,62 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 #from funciones_ayuda import find_missing_values
 from sklearn.preprocessing import StandardScaler
-from scipy.stats import norm
+from scipy.stats import norm,skew
 from scipy import stats
 
-
-
+## Cargar datos TRAIN ###
 
 df_train = pd.read_csv("train.csv", encoding ="latin-1", sep=",", header=0)
 
-
+## Códigos BÁSICOS VISTA GENERAL DE LOS DATOS
 print(df_train.columns) #Entrega todos los nombres de las variables
     
 df_train.info() #Muestra el tipo (int64, object,etc) nombre columna, non null data
     
-df_train.head() #En este caso con muchas columnas no es muy útil (muestra las 10 primeras filas)
-    
-#Diccionario de missing values por columna    
-#missing_values= find_missing_values(df_train, columns=df_train.columns)
+df_train.head() #En este caso con muchas columnas no es muy útil (muestra las 10 primeras filas)    
 
 df_train['SalePrice'].describe() #entrega medidas de tendencia central y dispersión
 
 sns.distplot(df_train['SalePrice']) #histograma o distribución de los datos ordenados
 
-print("Skewness: %f" % df_train['SalePrice'].skew())
-print("Kurtosis: %f" % df_train['SalePrice'].kurt()) 
+print("Skewness: %f" % df_train['SalePrice'].skew()) # Simetría entre  {-0,5 y 0,5} es bastante simetrico, |skew|>1 es muy skewed
+print("Kurtosis: %f" % df_train['SalePrice'].kurt()) # Kurt=3 normal Kurt>3 mucho outlier Kurt<3 poco outlier
+
+y = df_train.SalePrice
+y=np.log(y)
+### Vista de NULL VALUES
 
 nulltrain=df_train.isnull().sum()
 nulltrain=nulltrain[nulltrain>0]
 nulltrain.sort_values(ascending=False)
+
+### Se toman las variables NÚMERICAS (puede incluir categóricas)
+colsnum=df_train.select_dtypes(exclude = ["object"]).columns
+colsnum= colsnum.drop('SalePrice')
+x_num=df_train[colsnum]
+
+### Se ordenan según skewness
+skewness = x_num.apply(lambda x: skew(x))
+skewness.sort_values(ascending=False)
+skewness = skewness[abs(skewness)>0.5]
+
+#Analizar todos los histogramas y scatter de x_num con SalePrice
+for item in skewness.index.values:
+    sns.distplot(x_num[item])
+    plt.show()
+    data =pd.concat([df_train.SalePrice,x_num[item]],axis=1)
+    data.plot.scatter(y='SalePrice',x=item)
+    plt.show()
+    
+# Separación de variables NO-NÚMERICAS/CATEGÓRICAS
+colscat=df_train.select_dtypes(include = ["object"]).columns
+x_cat = df_train[colscat]
+# Analizar Boxplots de x_cat con SalePrice
+for item in colscat:
+    data = pd.concat([df_train['SalePrice'], df_train[item]], axis=1)
+    f, ax = plt.subplots(figsize=(8, 6))
+    fig = sns.boxplot(x=item, y="SalePrice", data=data)
+    plt.show()    
 
 #correlation matrix
 corrmat = df_train.corr()
@@ -52,7 +80,6 @@ sns.set(font_scale=1)
 hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values, cmap='RdYlGn')
 plt.show()   
 
-
 #Ordenamos la matriz de corr con la columna de SalePrice
 #Luego se imprime la columna
 corrmat.sort_values(['SalePrice'],ascending=False,inplace=True) #Corresponde a una accion sobre corrmat
@@ -64,24 +91,7 @@ numerical_features = numerical_features.drop("SalePrice")
 train_num = df_train[numerical_features]
 train_cat = df_train[categorical_features]
 
-
-#scatter plot grlivarea/saleprice
-var = 'GrLivArea'
-data = pd.concat([df_train['SalePrice'], df_train[var]], axis=1)
-data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000));
-#scatter plot totalbsmtsf/saleprice
-var = 'TotalBsmtSF'
-data = pd.concat([df_train['SalePrice'], df_train[var]], axis=1)
-data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000));
-
-#box plot overallqual/saleprice
-var = 'OverallQual'
-data = pd.concat([df_train['SalePrice'], df_train[var]], axis=1)
-f, ax = plt.subplots(figsize=(8, 6))
-fig = sns.boxplot(x=var, y="SalePrice", data=data)
-fig.axis(ymin=0, ymax=800000);
-
-
+##### OTROS CÓDIGOS ###########
 #scatterplot
 sns.set()
 cols = ['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'YearBuilt']
