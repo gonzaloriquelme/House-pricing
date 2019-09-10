@@ -20,11 +20,13 @@ from funciones_ayuda import mean_absolute_percentage_error, root_mean_squared_lo
 from tabulate import tabulate
 
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
-from sklearn.linear_model import RidgeCV
+from sklearn.model_selection import train_test_split, GridSearchCV, KFold
+from sklearn.linear_model import Ridge, Lasso, ElasticNet
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler, LabelEncoder
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.kernel_ridge import KernelRidge
+from StackingClass import StackingAveragedModels
 
 
 
@@ -44,11 +46,73 @@ y=np.log(y)
 all_data=pd.concat([df_train,df_test],axis=0)
 all_data=all_data.drop(columns='SalePrice') 
 
+## Tipos de variables
+
+pd.set_option('display.max_rows', 81)
+all_data.dtypes.sort_values(ascending=False)
+
+## Object
+## Por lo general, todas son categoricas en forma de string
+all_data.select_dtypes(include=['O']).columns
+## Numeric int64 y float64
+## Se revisan variables numericas que deben ser categoricas astype('str')
+all_data.select_dtypes(exclude=['O']).columns
+
+### Se agrega TotalSF
+
+all_data['TotalSF']= all_data['TotalBsmtSF'] + all_data['1stFlrSF'] + all_data['2ndFlrSF']         
+
+
+## Casos moda y mediana
+        
+all_data['MSZoning']=all_data['MSZoning'].fillna(all_data['MSZoning'].mode())
+
+all_data['LotFrontage']=all_data['LotFrontage'].fillna(all_data['LotFrontage'].median())
+
+all_data['Functional']=all_data['Functional'].fillna(all_data['Functional'].mode())            
+
+all_data['GarageYrBlt']=all_data['GarageYrBlt'].fillna(all_data['GarageYrBlt'].median())
+
+all_data['Exterior1st']=all_data['Exterior1st'].fillna(all_data['Exterior1st'].mode())
+  
+all_data['Exterior2nd']=all_data['Exterior2nd'].fillna(all_data['Exterior2nd'].mode())
+
+all_data['BsmtFinSF1']=all_data['BsmtFinSF1'].fillna(all_data['BsmtFinSF1'].median())
+
+all_data['BsmtFinSF2']=all_data['BsmtFinSF2'].fillna(all_data['BsmtFinSF2'].median())
+
+all_data['BsmtUnfSF']=all_data['BsmtUnfSF'].fillna(all_data['BsmtUnfSF'].median())
+
+all_data['TotalBsmtSF']=all_data['TotalBsmtSF'].fillna(all_data['TotalBsmtSF'].median())
+
+all_data['Electrical']=all_data['Electrical'].fillna(all_data['Electrical'].mode())
+
+all_data['KitchenQual']=all_data['KitchenQual'].fillna(all_data['KitchenQual'].mode())
+
+all_data['GarageCars']=all_data['GarageCars'].fillna(all_data['GarageCars'].mode())
+
+all_data['GarageArea']=all_data['GarageArea'].fillna(all_data['GarageArea'].mode())
+
+all_data['SaleType']=all_data['SaleType'].fillna(all_data['SaleType'].mode())
 
 ### Vista de missing values y reemplazo por valores
+## Antes de eliminar missing values se revisa si NAN significa 0 o None (otra categoría)
 nulltrain=all_data.isnull().sum()
 nulltrain=nulltrain[nulltrain>0]
-nulltrain.sort_values(ascending=False)
+percent=nulltrain*100/len(all_data)
+missingtable=pd.concat([nulltrain,percent,all_data.dtypes],axis=1)
+missingtable=missingtable.rename(columns={0:'#',1:'%',2:'dtype'})
+missingtable=missingtable[missingtable['#']>0]
+missingtable.sort_values(by='%',ascending=False)
+
+for item in nulltrain.index:
+    if all_data[item].dtype=='O':
+        data = pd.concat([y, df_train[item]], axis=1)
+        f, ax = plt.subplots(figsize=(8, 6))
+        fig = sns.boxplot(x=item, y="SalePrice", data=data)
+        plt.show()
+
+
 for item in nulltrain.index:
     if all_data[item].dtype=='O':
         all_data[item]=all_data[item].fillna('None')
@@ -68,27 +132,6 @@ for c in cols:
     lbl.fit(list(all_data[c].values)) 
     all_data[c] = lbl.transform(list(all_data[c].values))        
         
-### Se agrega TotalSF
-
-all_data['TotalBsmtSF']=all_data['TotalBsmtSF'].astype('int64')
-
-all_data['TotalSF']= all_data['TotalBsmtSF'] + all_data['1stFlrSF'] + all_data['2ndFlrSF']         
-
-## Arreglar ciertas variables
-
-all_data['TotalSF']= all_data['TotalSF'].astype('float64') 
-
-all_data['BsmtFinSF1']=all_data['BsmtFinSF1'].astype('float64')
-
-all_data['BsmtFinSF2']=all_data['BsmtFinSF2'].astype('float64')  
-
-all_data['BsmtUnfSF']=all_data['BsmtUnfSF'].astype('float64')
-
-all_data['GarageArea']=all_data['GarageArea'].astype('float64')
-         
-all_data['LotFrontage']=all_data['LotFrontage'].astype('float64')
-
-all_data['MasVnrArea']=all_data['MasVnrArea'].astype('float64')
 ##  Revision Skewness 
 # Se separan variables númericas de las no-númericas(Puede contener categóricas)
 
@@ -101,8 +144,8 @@ corrmat['SalePrice'].sort_values(ascending=False)##Revisar correlacion de TotBsm
 
 ## Se descartan las variables que no tienen relacion lineal con SalePrice
 
-dropvar=corrmat['SalePrice'][abs(corrmat['SalePrice'])<0.5].index.values
-x_num=x_num.drop(columns=dropvar)
+#dropvar=corrmat['SalePrice'][abs(corrmat['SalePrice'])<0.5].index.values
+#x_num=x_num.drop(columns=dropvar)
 
 ### Ahora se revisa Skewness
 
@@ -112,7 +155,6 @@ skewness = skewness[abs(skewness)>0.75]
     
 # Se redefine el conjunto skewness y se aplica la transformacion    
 x_num[skewness.index] = np.log1p(x_num[skewness.index]) #Revisar 
-
 
 ## Separación de variables no númericas, categóricas
 colscat=all_data.select_dtypes(include = ["object"]).columns
@@ -137,77 +179,109 @@ reg.fit(x_train,y_train)
 
 predictions=reg.predict(x_test)
 
-columnastabla=['Modelo','Training R^2', 'Test/Validation R^2', 'RMSLE','RMSE']
+columnastabla=['Modelo','Training R^2', 'Test/Validation R^2']
 Linear=['RL',
         "%.4f" % reg.score(x_train,y_train),
-        "%.4f" % reg.score(x_test,y_test),
-        "%.4f" % np.sqrt(mean_squared_log_error(y_test,predictions)),
-        "%.4f" % np.sqrt(mean_squared_error(y_test, predictions))]
+        "%.4f" % reg.score(x_test,y_test)]
 
 
 ########## L2 Regularization or Ridge Regression 
 ########## Alpha {0.1 to infinity} 
 
-ridge=RidgeCV(alphas = [0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1, 3, 6, 10, 30, 60], fit_intercept=True) 
 
-ridge.fit(x_train, y_train)
+#ridge = GridSearchCV(Ridge(fit_intercept=True),
+#                     param_grid={'alpha':np.linspace(7,8,10)}, cv=5)
 
-alpha=ridge.alpha_
-print('Best alpha',"%.2f" % alpha)
+ridge= Ridge(alpha=7, fit_intercept=True)
 
-print("Try again for more precision with alphas centered around " + "%.2f" %alpha)
-ridge = RidgeCV(alphas = [alpha * .6, alpha * .65, alpha * .7, alpha * .75, alpha * .8, alpha * .85, 
-                          alpha * .9, alpha * .95, alpha, alpha * 1.05, alpha * 1.1, alpha * 1.15,
-                          alpha * 1.25, alpha * 1.3, alpha * 1.35, alpha * 1.4],cv = 5, fit_intercept=True) 
-
-ridge.fit(x_train, y_train)
-alpha = ridge.alpha_
-print("Best alpha :","%.2f" % alpha)
-
-print("Try again for more precision with alphas centered around " + "%.2f" % alpha)
-ridge = RidgeCV(alphas = [alpha * .6, alpha * .65, alpha * .7, alpha * .75, alpha * .8, alpha * .85, 
-                          alpha * .9, alpha * .95, alpha, alpha * 1.05, alpha * 1.1, alpha * 1.15,
-                          alpha * 1.25, alpha * 1.3, alpha * 1.35, alpha * 1.4],cv = 5, fit_intercept=True) 
-
-ridge.fit(x_train, y_train)
-alpha = ridge.alpha_
-print("Best alpha :","%.2f" % alpha)
-
-test_pre = ridge.predict(x_test)
-train_pre = ridge.predict(x_train)
+ridge.fit(x_train,y_train)
 
 
-coef = pd.Series(ridge.coef_)
-
-print("Ridge picked " + str(sum(coef != 0)) + " variables and eliminated the other " +  str(sum(coef == 0)) + " variables")
-
-Ridge=['RL-Ridge:'+"%.2f" % alpha,
+Rridge=['RL-Ridge',
         "%.4f" % ridge.score(x_train,y_train),
-        "%.4f" % ridge.score(x_test,y_test),
-        "%.4f" % np.sqrt(mean_squared_log_error(y_test,test_pre)),
-        "%.4f" % np.sqrt(mean_squared_error(y_test, test_pre))]
+        "%.4f" % ridge.score(x_test,y_test)]
 
 
 ### Gradient Boosting Regression ###
-GBoost = GradientBoostingRegressor(n_estimators=3000, learning_rate=0.05,
-                                   max_depth=4, max_features='sqrt',
-                                   min_samples_leaf=15, min_samples_split=10, 
-                                   loss='huber', random_state =5)
+
+#GBoost = GridSearchCV(GradientBoostingRegressor(n_estimators=3000,learning_rate=0.05,
+#                                                max_features='sqrt',min_samples_leaf=15, 
+#                                                min_samples_split=10,loss='huber',
+#                                                 random_state =5),
+#param_grid={'max_depth':[5,6]},cv=5)
+    
+GBoost = GradientBoostingRegressor(n_estimators=3000,learning_rate=0.05,
+                                                max_features='sqrt',min_samples_leaf=15, 
+                                                min_samples_split=10,loss='huber',
+                                                 random_state =5, max_depth=5)    
+
 GBoost.fit(x_train,y_train)
-test_pre=GBoost.predict(x_test)
-train_pre=GBoost.predict(x_train)
 
 
 GradBoost=['GBoost-R',
         "%.4f" % GBoost.score(x_train,y_train),
-        "%.4f" % GBoost.score(x_test,y_test),
-        "%.4f" % np.sqrt(mean_squared_log_error(y_test,test_pre)),
-        "%.4f" % np.sqrt(mean_squared_error(y_test, test_pre))]
+        "%.4f" % GBoost.score(x_test,y_test)]
+
+### Lasso Regression ###
+
+#lasso = GridSearchCV(Lasso(random_state=1),
+#                   param_grid={'alpha':np.logspace(-5,-4,10)},cv=5)
+
+lasso = Lasso(alpha=1e-05, random_state=1)
+
+
+lasso.fit(x_train,y_train)
+
+
+RLasso=['RL-Lasso',
+        "%.4f" % lasso.score(x_train,y_train),
+        "%.4f" % lasso.score(x_test,y_test)]
+
+### Elastic Net Regression ###
+
+
+#ENet = GridSearchCV(ElasticNet(random_state=3),param_grid={'alpha':np.logspace(-6,-2,10),
+#                    'l1_ratio':np.linspace(0.5,0.9,5)}, cv=5)
+
+ENet = ElasticNet(alpha=0.00046,l1_ratio=0.9,random_state=3)
+
+ENet.fit(x_train,y_train)
+
+
+ElasticN=['RL-ENet',
+        "%.4f" % ENet.score(x_train,y_train),
+        "%.4f" % ENet.score(x_test,y_test)]
+
+### Kernel Ridge Regression ###
+
+#KRidge = GridSearchCV(KernelRidge(kernel='polynomial',degree=2,coef0=2.5),
+#                      param_grid={'alpha':np.linspace(0.7,0.9,10),
+#                                  'gamma': np.logspace(-5,-3,10)}, cv=5)
+
+KRidge = KernelRidge(kernel='polynomial', degree=2, coef0=2.5, alpha=0.9 ,gamma=1e-04)
+
+KRidge.fit(x_train,y_train)
+
+
+Kernelridge=['RL-KRidge',
+        "%.4f" % KRidge.score(x_train,y_train),
+        "%.4f" % KRidge.score(x_test,y_test)]
+
+#### Stacking Averaged Models ####
+
+Stack = StackingAveragedModels(base_models=(ENet, GBoost, ridge, KRidge), meta_model=lasso)
+
+Stack.fit(x_train,y_train)
+
+Stacking=['Stack',
+        "%.4f" % Stack.score(x_train,y_train),
+        "%.4f" % Stack.score(x_test,y_test)]
 
 #### Tabla con Resultados ######
 
-Resultados=pd.DataFrame(np.array([Linear,Ridge,GradBoost]),columns=columnastabla)
+Resultados=pd.DataFrame(np.array([Linear,Rridge,GradBoost,RLasso,ElasticN,Kernelridge,Stacking]),columns=columnastabla)
 print(tabulate(Resultados,headers='keys',tablefmt='fancy_grid'))
+
 ########Predicciones finales##########
 
 
@@ -215,7 +289,7 @@ print(tabulate(Resultados,headers='keys',tablefmt='fancy_grid'))
 #x=pf.transform(x)
 
 ides=df_train.Id
-predictions=np.exp(ridge.predict(x_test_))
+predictions=np.exp(Stack.predict(x_test_))
 
 #### Crear archivo para Kaggle####
 workbook = xlsxwriter.Workbook('submit.xlsx') #revisar esto debería definir las dummies por su definicion
