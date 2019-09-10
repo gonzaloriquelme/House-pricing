@@ -95,6 +95,10 @@ all_data['GarageArea']=all_data['GarageArea'].fillna(all_data['GarageArea'].mode
 
 all_data['SaleType']=all_data['SaleType'].fillna(all_data['SaleType'].mode())
 
+all_data=all_data.drop(columns=['GarageArea','Id','1stFlrSF','2ndFlrSF','Utilities',
+                                'Exterior1st','Exterior2nd','Fence','BsmtFinType1',
+                                'BsmtFinType2','FireplaceQu'])
+
 ### Vista de missing values y reemplazo por valores
 ## Antes de eliminar missing values se revisa si NAN significa 0 o None (otra categoría)
 nulltrain=all_data.isnull().sum()
@@ -121,11 +125,10 @@ for item in nulltrain.index:
         
 ## LabelEncoder        
         
-cols = ('FireplaceQu', 'BsmtQual', 'BsmtCond', 'GarageQual', 'GarageCond', 
-        'ExterQual', 'ExterCond','HeatingQC', 'PoolQC', 'KitchenQual', 'BsmtFinType1', 
-        'BsmtFinType2', 'Functional', 'Fence', 'BsmtExposure', 'GarageFinish', 'LandSlope',
-        'LotShape', 'PavedDrive', 'Street', 'Alley', 'CentralAir', 'MSSubClass', 'OverallCond', 
-        'YrSold', 'MoSold')
+cols = ('Functional','BsmtQual', 'BsmtCond', 'GarageQual', 'GarageCond', 
+        'ExterQual', 'ExterCond','HeatingQC', 'PoolQC', 'KitchenQual',
+        'BsmtExposure', 'GarageFinish', 'LandSlope','LotShape', 'PavedDrive', 
+        'Street', 'Alley', 'CentralAir', 'MSSubClass', 'OverallCond', 'YrSold', 'MoSold')
 # process columns, apply LabelEncoder to categorical features
 for c in cols:
     lbl = LabelEncoder() 
@@ -153,7 +156,7 @@ skewness = x_num.apply(lambda x: skew(x))
 skewness.sort_values(ascending=False)
 skewness = skewness[abs(skewness)>0.75]
     
-# Se redefine el conjunto skewness y se aplica la transformacion    
+# Se redefine el conjunto de los skewness y se aplica la transformacion    
 x_num[skewness.index] = np.log1p(x_num[skewness.index]) #Revisar 
 
 ## Separación de variables no númericas, categóricas
